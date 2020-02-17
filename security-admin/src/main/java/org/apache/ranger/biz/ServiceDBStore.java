@@ -2889,7 +2889,11 @@ public class ServiceDBStore extends AbstractServiceStore {
 		}
 
 		if (ret != null) {
-			ret.setPolicyVersion(serviceVersionInfoDbObj == null ? null : serviceVersionInfoDbObj.getPolicyVersion());
+			if (ret.getPolicyVersion() != null && serviceVersionInfoDbObj != null && ret.getPolicyVersion() > serviceVersionInfoDbObj.getPolicyVersion()) {
+				LOG.info("Collected new PolicyDelta(s) with version larger than expected version " + serviceVersionInfoDbObj.getPolicyVersion());
+			} else {
+				ret.setPolicyVersion(serviceVersionInfoDbObj == null ? null : serviceVersionInfoDbObj.getPolicyVersion());
+			}
 			ret.setPolicyUpdateTime(serviceVersionInfoDbObj == null ? null : serviceVersionInfoDbObj.getPolicyUpdateTime());
 			ret.setAuditMode(auditMode);
 			if (ret.getTagPolicies() != null) {
@@ -2927,7 +2931,10 @@ public class ServiceDBStore extends AbstractServiceStore {
 		}
 
 		if (LOG.isDebugEnabled()) {
-			LOG.debug("<== ServiceDBStore.getServicePolicies(" + serviceName + ", " + lastKnownVersion + "): count=" + ((ret == null || ret.getPolicies() == null) ? 0 : ret.getPolicies().size()) + ", delta-count=" + ((ret == null || ret.getPolicyDeltas() == null) ? 0 : ret.getPolicyDeltas().size()));
+			LOG.debug("<== ServiceDBStore.getServicePolicies(" + serviceName + ", " + lastKnownVersion +
+					"): count=" + ((ret == null || ret.getPolicies() == null) ? 0 : ret.getPolicies().size()) +
+					", delta-count=" + ((ret == null || ret.getPolicyDeltas() == null) ? 0 : ret.getPolicyDeltas().size()) +
+					", version=" + (ret == null ? null : ret.getPolicyVersion()));
 		}
 
 		return ret;
@@ -3122,6 +3129,7 @@ public class ServiceDBStore extends AbstractServiceStore {
 						ret.setServiceDef(serviceDef);
 						ret.setPolicies(null);
 						ret.setPolicyDeltas(compressedDeltas);
+						ret.setPolicyVersion(compressedDeltas.stream().mapToLong(RangerPolicyDelta::getPolicyVersion).max().orElse(-1));
 
 						if (tagServiceDef != null && tagService != null) {
 							ServicePolicies.TagPolicies tagPolicies = new ServicePolicies.TagPolicies();
